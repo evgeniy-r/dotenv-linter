@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### 🚀 Added
+- Github Actions: Add caching in CI workflow [#162](https://github.com/dotenv-linter/dotenv-linter/pull/162) ([@evgeniy-r](https://github.com/evgeniy-r))
 
 ### 🔧 Changed
 - Fix docker image [#160](https://github.com/dotenv-linter/dotenv-linter/pull/160)
