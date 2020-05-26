@@ -8,6 +8,8 @@ use std::{env, process};
 
 mod checks;
 mod common;
+mod file_writer;
+mod fixes;
 mod fs_utils;
 
 fn get_args(current_dir: &OsStr) -> clap::ArgMatches {
@@ -46,6 +48,12 @@ fn get_args(current_dir: &OsStr) -> clap::ArgMatches {
             Arg::with_name("show-checks")
                 .long("show-checks")
                 .help("Shows list of available checks"),
+        )
+        .arg(
+            Arg::with_name("autofix")
+                .short("f")
+                .long("autofix")
+                .help("Automatically fixes warnings if possible"),
         )
         .get_matches()
 }
@@ -111,6 +119,7 @@ pub fn run() -> Result<Vec<Warning>, Box<dyn Error>> {
     file_paths.sort();
     file_paths.dedup();
 
+    let autofix = args.is_present("autofix");
     let mut warnings: Vec<Warning> = Vec::new();
 
     for path in file_paths {
@@ -119,21 +128,25 @@ pub fn run() -> Result<Vec<Warning>, Box<dyn Error>> {
             None => continue,
         };
 
-        let file_with_lines = match FileEntry::from(relative_path) {
+        let (fe, strs) = match FileEntry::from(relative_path) {
             Some(f) => f,
             _ => continue,
         };
 
-        let lines = get_line_entries(file_with_lines.0, file_with_lines.1);
+        let mut lines = get_line_entries(&fe, strs);
 
-        let result = checks::run(lines, &skip_checks);
+        let result = checks::run(&lines, &skip_checks);
         warnings.extend(result);
+
+        if autofix && fixes::run(&mut warnings, &mut lines) > 0 {
+            file_writer::write(&fe.path, lines)?;
+        }
     }
 
     Ok(warnings)
 }
 
-fn get_line_entries(fe: FileEntry, lines: Vec<String>) -> Vec<LineEntry> {
+fn get_line_entries(fe: &FileEntry, lines: Vec<String>) -> Vec<LineEntry> {
     let mut entries: Vec<LineEntry> = Vec::with_capacity(fe.total_lines);
 
     for (index, line) in lines.into_iter().enumerate() {
